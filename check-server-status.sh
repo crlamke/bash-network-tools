@@ -30,7 +30,6 @@ function usage()
 # Description: This function will validate the command line parameters
 function checkParameters()
 {
-#  echo "arg count = $#"
   printf "\nChecking parameters ...\n"
   if [ $1 != "" ]; then
     serverConfigPath=$1 
@@ -77,14 +76,12 @@ function checkServerPing()
   counter=0
   while [ $counter -lt $serverCount ]; do
     
-    ping -c 1 -W 1 ${ipAddress[$counter]} &> /dev/null
+    ping -c 1 -W 3 ${ipAddress[$counter]} &> /dev/null
     if [ $? == 0 ]; then
-#echo ${ipAddress[$counter]} is reachable by ping
       pingReachable[$counter]=0
     else
       pingReachable[$counter]=1
     fi
-#    echo The counter is $counter
     let counter=$counter+1 
   done
 
@@ -101,15 +98,17 @@ function checkSSHAvailability()
   printf "\nChecking servers' ssh availability ...\n"
   counter=0
   while [ $counter -lt $serverCount ]; do
+    # Not using ssh-keyscan as it's unreliable on my test network. I may have syntax wrong    
+    # ssh-keyscan ${ipAddress[$counter]} 2>&1 | grep -v "^$" > /dev/null
+    # We're going to use netcat for now because it at least tells us reliably
+    # whether there's a service at port 22.
+    nc -w 3 -z ${ipAddress[$counter]} 22 > /dev/null
     
-    ssh-keyscan {ipAddress[$counter]} 2>&1 | grep -v "^$" > /dev/null
     if [ $? == 0 ]; then
       sshAvailable[$counter]=0
-#echo ${ipAddress[$counter]} has ssh available
     else
       sshAvailable[$counter]=1
     fi
-#    echo The counter is $counter
     let counter=$counter+1 
   done
 
@@ -142,9 +141,10 @@ function reportResults()
     fi
 
     if [ $reportError -eq 1 ]; then
-      echo -e "${RED}${reportHostString} ${reportResultsString}${NOCOLOR}"
+    reportHostString="${hostname[$counter]} | ${ipAddress[$counter]} : "
+      printf "%b%-12s : %-15s : %s%b\n" "${RED}" "${hostname[$counter]}" "${ipAddress[$counter]}" "${reportResultsString}" "${NOCOLOR}"
     else
-      echo -e "${GREEN}${reportHostString} ${reportResultsString}${NOCOLOR}"
+      printf "%b%-12s : %-15s : %s%b\n" "${GREEN}" "${hostname[$counter]}" "${ipAddress[$counter]}" "${reportResultsString}" "${NOCOLOR}"
     fi
 
     let counter=$counter+1 
