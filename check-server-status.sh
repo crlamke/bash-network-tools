@@ -1,4 +1,13 @@
-#!/bin/bash
+#!/bin/bash 
+#
+#Script Name : check-server-status.sh
+#Description : This script will read in a CSV formatted list of servers and check their ping and ssh status.
+#Author      : Chris Lamke
+#Last Update : 2019 Feb 25
+#Version     : 0.2  
+#Usage       : ./check-server-status.sh path-to-server-config-file
+#Notes       : 
+#
 
 # Uncomment the set -x to enable script debug mode
 #set -x
