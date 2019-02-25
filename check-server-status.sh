@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# Uncomment the set -x to enable script debug mode
 #set -x
 
 RED="\033[0;31m"
@@ -17,11 +18,11 @@ declare -a pingReachable
 declare -a sshAvailable
 
 
-function usage()
+function printUsage()
 {
-  echo "Usage: $0 path-of-server-cfg-file"
+  echo -e "Usage:\t$0 path-of-server-cfg-file"
   echo ""
-  echo "\twhere cfg-file is the path to the server config file you want to process"
+  echo -e "\tWhere cfg-file is the path to the server config file you want to process"
   echo ""
 }
 
@@ -31,7 +32,7 @@ function usage()
 function checkParameters()
 {
   printf "\nChecking parameters ...\n"
-  if [ $1 != "" ]; then
+  if [ $# -gt 0 ] && [ $1 != "" ]; then
     serverConfigPath=$1 
     if [ -f $serverConfigPath ]; then
       printf "Using $serverConfigPath as server config file.\n"
@@ -53,16 +54,19 @@ function checkParameters()
 #              for later processing.
 function readServerConfig()
 {
-  printf "\nReading server config file ...\n"
+  printf "\nReading server config file\n"
   counter=0
   while IFS=, read -r ipAddress[$counter] hostname[$counter] hostDescription[$counter]
   do
-    echo "Read: ${ipAddress[$counter]} | ${hostname[$counter]} | ${hostDescription[$counter]}"
+    # For verbose output of contents read from server config, 
+    # uncomment the echo and comment the printf below.
+    #echo "Read: ${ipAddress[$counter]} | ${hostname[$counter]} | ${hostDescription[$counter]}"
+    printf "."
     let counter=$counter+1 
     let serverCount=$serverCount+1 
   done < $serverConfigPath
 
-  printf "Finished reading server config file ...\n"
+  printf "\nReading server config file complete\n"
 }
 
 
@@ -72,10 +76,10 @@ function readServerConfig()
 #              in the server array loaded from a file.
 function checkServerPing()
 {
-  printf "\nChecking servers' ping reachability ...\n"
+  printf "\nChecking servers' ping reachability\n"
   counter=0
   while [ $counter -lt $serverCount ]; do
-    
+    printf "."
     ping -c 1 -W 3 ${ipAddress[$counter]} &> /dev/null
     if [ $? == 0 ]; then
       pingReachable[$counter]=0
@@ -85,7 +89,7 @@ function checkServerPing()
     let counter=$counter+1 
   done
 
-  printf "Finished checking servers' ping reachability ...\n"
+  printf "\ncomplete\n"
 }
 
 
@@ -95,9 +99,10 @@ function checkServerPing()
 #              in the server array loaded from a file.
 function checkSSHAvailability()
 {
-  printf "\nChecking servers' ssh availability ...\n"
+  printf "\nChecking servers' ssh availability\n"
   counter=0
   while [ $counter -lt $serverCount ]; do
+  printf "."
     # Not using ssh-keyscan as it's unreliable on my test network. I may have syntax wrong    
     # ssh-keyscan ${ipAddress[$counter]} 2>&1 | grep -v "^$" > /dev/null
     # We're going to use netcat for now because it at least tells us reliably
@@ -112,7 +117,7 @@ function checkSSHAvailability()
     let counter=$counter+1 
   done
 
-  printf "Finished checking servers' ssh availability ...\n"
+  printf "\ncomplete\n"
 }
 
 # Name: reportResults
@@ -120,14 +125,13 @@ function checkSSHAvailability()
 # Description: This function reports the results of the servers checks.
 function reportResults()
 {
-  printf "\nReporting results ...\n"
+  printf "\nReporting results\n"
   counter=0
   while [ $counter -lt $serverCount ]; do
     reportResultsString=""
     reportError=0
-    reportHostString="${hostname[$counter]} | ${ipAddress[$counter]} : "
     if [ ${sshAvailable[$counter]} -eq 0 ]; then
-      reportResultsString="SSH available"
+      reportResultsString="SSH available    "
     else
       reportError=1
       reportResultsString="SSH NOT available"
@@ -141,7 +145,6 @@ function reportResults()
     fi
 
     if [ $reportError -eq 1 ]; then
-    reportHostString="${hostname[$counter]} | ${ipAddress[$counter]} : "
       printf "%b%-12s : %-15s : %s%b\n" "${RED}" "${hostname[$counter]}" "${ipAddress[$counter]}" "${reportResultsString}" "${NOCOLOR}"
     else
       printf "%b%-12s : %-15s : %s%b\n" "${GREEN}" "${hostname[$counter]}" "${ipAddress[$counter]}" "${reportResultsString}" "${NOCOLOR}"
